@@ -80,7 +80,7 @@ def crank_nicolson_transformed_eur(option: Option, n_space, n_steps, xmin=-3, xm
     return np.array(w)
 
 
-def transform_to_original_eur(option: Option, y, n_space, n_steps, xmin=-3, xmax=3):
+def transform_to_original(option: Option, y, n_space, n_steps, xmin=-3, xmax=3):
     K = option.K
     T = option.T
     r = option.r
@@ -110,7 +110,7 @@ def transform_to_original_eur(option: Option, y, n_space, n_steps, xmin=-3, xmax
 
 def fd_pricer_eur(option: Option, n_space, n_steps, xmin=-3, xmax=3):
     y = crank_nicolson_transformed_eur(option, n_space, n_steps, xmin, xmax)
-    S, t, v = transform_to_original_eur(option, y[-1], n_space, n_steps, xmin, xmax)
+    S, t, v = transform_to_original(option, y[-1], n_space, n_steps, xmin, xmax)
 
     return np.interp(option.S0, S, v)
 
@@ -163,9 +163,9 @@ def crank_nicolson_transformed_am(option: Option, n_space, n_steps, xmin=-3, xma
     l = dt / dx ** 2
     alpha = l / 2
 
-    result = None
-
     w = init_w(option, n_space, 0.0, xmin, dx, dt)
+
+    w_vals = [w]
 
     for v in range(n_steps):
         t = v * dt
@@ -192,42 +192,13 @@ def crank_nicolson_transformed_am(option: Option, n_space, n_steps, xmin=-3, xma
         new_vec[0] = g_next[0]
         new_vec[n_space] = g_next[n_space]
         w = np.copy(new_vec)
-        result = np.copy(new_vec)
+        w_vals.append(w)
 
-    return result
-
-
-def transform_to_original_am(option: Option, y, n_space, n_steps, xmin=-3, xmax=3):
-    K = option.K
-    T = option.T
-    r = option.r
-    sigma = option.sigma
-    div_yield = option.div_yield
-
-    dx = (xmax - xmin) / n_space
-
-    tmax = 0.5 * sigma ** 2 * T
-    dt = tmax / n_steps
-
-    l = dt / dx ** 2
-
-    q = 2 * (r - div_yield) / sigma ** 2
-    p = 2 * r / sigma ** 2
-
-    x = np.array([xmin + i * dx for i in range(n_space+1)])
-    tau = tmax
-
-    v = K * np.exp(-0.5 * (q - 1) * x - (0.25 * (q-1) ** 2 + p) * tau) * y
-
-    S = K * np.exp(x)
-    t = T - (2 / sigma ** 2) * tau
-
-    return S, t, v
-
+    return np.array(w_vals)
 
 def fd_pricer_am(option: Option, n_space, n_steps, xmin=-3, xmax=3, eps=1e-10, omega=1.0, max_itr=10000):
-    y = crank_nicolson_transformed_am(option, n_space, n_steps, xmin, xmax, eps, omega, max_itr)
-    S, t, v = transform_to_original_am(option, y, n_space, n_steps, xmin, xmax)
+    y = crank_nicolson_transformed_am(option, n_space, n_steps, xmin, xmax, eps, omega, max_itr)[-1]
+    S, t, v = transform_to_original(option, y, n_space, n_steps, xmin, xmax)
 
     return np.interp(option.S0, S, v)
 

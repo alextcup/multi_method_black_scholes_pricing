@@ -2,7 +2,6 @@ import numpy as np
 
 from option import Option
 
-
 def integrate_sde(y0, T, n_steps, a, b):
     dt = T / n_steps
     y_values = [y0]
@@ -30,13 +29,15 @@ def payoff(S, K, option_type):
         return np.maximum(K - S, 0)
 
 
-def simulate_paths(y0, T, n_paths, n_steps, a, b):
+def simulate_paths(y0, T, n_paths, n_steps, a, b, rng=None):
     dt = T / n_steps
+
+    rng = np.random.default_rng(rng)
 
     S = np.zeros((n_steps+1, n_paths))
     S[0,:] = y0
     for i in range(0, n_steps):
-        dW = np.random.normal(0, np.sqrt(dt), size=n_paths)
+        dW = rng.normal(0, np.sqrt(dt), size=n_paths)
 
         yi = S[i,:]
 
@@ -49,7 +50,7 @@ def simulate_paths(y0, T, n_paths, n_steps, a, b):
     return S
 
 
-def mc_pricer_eur(option: Option, n_paths, n_steps=10):
+def mc_pricer_eur(option: Option, n_paths, n_steps=10, rng=None):
     S0 = option.S0
     K = option.K
     T = option.T
@@ -65,7 +66,7 @@ def mc_pricer_eur(option: Option, n_paths, n_steps=10):
     a = lambda S: rd * S
     b = lambda S: sigma * S
 
-    S = simulate_paths(S0, T, n_paths, n_steps, a, b)[-1,:]
+    S = simulate_paths(S0, T, n_paths, n_steps, a, b, rng)[-1,:]
 
     V = payoff(S, K, option_type)
     expectation = np.mean(V)
@@ -75,7 +76,7 @@ def mc_pricer_eur(option: Option, n_paths, n_steps=10):
     return price
 
 
-def mc_pricer_am(option: Option, n_paths, n_steps=10):
+def mc_pricer_am(option: Option, n_paths, n_steps=10, rng=None):
     S0 = option.S0
     K = option.K
     T = option.T
@@ -91,7 +92,7 @@ def mc_pricer_am(option: Option, n_paths, n_steps=10):
     drift = lambda S: rd * S
     diffusion = lambda S: sigma * S
 
-    S = simulate_paths(S0, T, n_paths, n_steps, drift, diffusion)[1:,:]
+    S = simulate_paths(S0, T, n_paths, n_steps, drift, diffusion, rng)[1:,:]
 
     g = payoff(S[n_steps-1,:], K, option_type)
     tau = n_steps * np.ones((n_paths,))
@@ -118,8 +119,8 @@ def mc_pricer_am(option: Option, n_paths, n_steps=10):
     return price
 
 
-def mc_pricer(option: Option, n_paths, n_steps=10):
+def mc_pricer(option: Option, n_paths, n_steps=10, rng=None):
     if option.exercise == "european":
-        return mc_pricer_eur(option, n_paths, n_steps)
+        return mc_pricer_eur(option, n_paths, n_steps, rng)
     elif option.exercise == "american":
-        return mc_pricer_am(option, n_paths, n_steps)
+        return mc_pricer_am(option, n_paths, n_steps, rng)

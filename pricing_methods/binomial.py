@@ -41,7 +41,7 @@ def binomial_pricer(option: Option, n_steps=10):
             V[j, n_steps] = max(K - S[j,n_steps], 0)
 
     for i in range(n_steps - 1, -1, -1):
-        for j in range(0, n_steps):
+        for j in range(0, i+1):
             V[j,i] = np.exp(-r * dt) * (p * V[j+1, i+1] + (1 - p) * V[j, i+1])
 
             if exercise == "american":

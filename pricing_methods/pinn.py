@@ -11,23 +11,34 @@ def payoff(S, K, option_type):
         return tf.maximum(K - S, 0)
 
 
-def build_model(width, depth):
+def build_model(option: Option, width, depth):
+  K = option.K
+  T = option.T
+
   model = tf.keras.Sequential(
-      [tf.keras.layers.InputLayer(input_shape=(2,)),
+      [tf.keras.layers.Input(shape=(2,)),
+       tf.keras.layers.Rescaling(scale=[1.0 / K, 1.0 / T]),
       *[tf.keras.layers.Dense(width, activation='tanh') for _ in range(depth)],
-       tf.keras.layers.Dense(1)
+       tf.keras.layers.Dense(1),
+       tf.keras.layers.Rescaling(scale=K)
       ]
   )
 
   return model
 
 
-def train(training_step, col_pts, bc_pts, ic_pts, epochs=1000):
-
+def train(training_step, option, n_collocation, n_boundary, n_initial, Smin, Smax, epochs=1000, resample_rate=100, verbose=False):
+  exercise = option.exercise
   for epoch in range(epochs):
+    if epoch % resample_rate == 0:
+        if exercise == "european":
+            col_pts, bc_pts, ic_pts = sample_points_eur(option, n_collocation, n_boundary, n_initial, Smin, Smax)
+        elif exercise == "american":
+            col_pts, bc_pts, ic_pts = sample_points_am(option, n_collocation, n_boundary, n_initial, Smin, Smax)   
     PDE_loss, IC_loss, BC_loss, loss = training_step(col_pts, bc_pts, ic_pts)
-    if epoch % 10 == 0:
-      print(f'Epoch {epoch} - PDE Loss {PDE_loss.numpy()} - IV Loss {IC_loss.numpy()} - BC Loss {BC_loss.numpy()} - Total Loss {loss.numpy()}')
+    if verbose:
+        if epoch % 100 == 0:
+            print(f'Epoch {epoch} - PDE Loss {PDE_loss.numpy()} - IV Loss {IC_loss.numpy()} - BC Loss {BC_loss.numpy()} - Total Loss {loss.numpy()}')
 
 
 def boundary_conditions_eur(option: Option):
@@ -76,11 +87,9 @@ def sample_points_eur(option: Option, n_collocation, n_boundary, n_initial, Smin
 
 
 def make_training_step_eur(option: Option, model, optimizer, g_initial=1.0, g_boundary=1.0):
-  K = option.K
   r = option.r
   sigma = option.sigma
   div_yield = option.div_yield
-  option_type = option.option_type
 
   @tf.function
   def training_step(pts, bc_pts, init_pts):
@@ -119,22 +128,23 @@ def make_training_step_eur(option: Option, model, optimizer, g_initial=1.0, g_bo
   return training_step
 
 
-def pinn_pricer_eur(option: Option, width=64, depth=4, epochs=15000, learning_rate=1e-3,
-                    n_collocation=10000, n_boundary=10000, n_initial=10000,
-                    g_initial=1.0, g_boundary=1.0, Smin=0.05, Smax=None):
+def pinn_pricer_eur(option: Option, width=64, depth=4, epochs=1000, learning_rate=1e-3,
+                    n_collocation=5000, n_boundary=1000, n_initial=1000,
+                    g_initial=1.0, g_boundary=1.0, Smin=0.05, Smax=None, resample_rate=50,
+                    verbose=False):
     if Smax is None:
-        Smax = 5 * option.K
+        Smax = 3 * option.K
 
-    col_pts, bc_pts, ic_pts = sample_points_eur(option, n_collocation, n_boundary, n_initial, Smin, Smax)
+    S0 = option.S0
 
-    model = build_model(width, depth)
-    model.summary()
+    model = build_model(option, width, depth)
     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
     training_step = make_training_step_eur(option, model, optimizer, g_initial, g_boundary)
-    train(training_step, col_pts, bc_pts, ic_pts, epochs=epochs)
+    train(training_step, option, n_collocation, n_boundary, n_initial, Smin, Smax,
+          epochs=epochs, resample_rate=resample_rate, verbose=verbose)
 
-    return float(model.predict(tf.constant([[option.S0, 0.0]], dtype=tf.float32))[0, 0])
+    return float(model(tf.constant([[S0, 0.0]], dtype=tf.float32))[0, 0])
 
 
 def boundary_conditions_am(option: Option):
@@ -224,22 +234,34 @@ def make_training_step_am(option: Option, model, optimizer, g_initial=1.0, g_bou
   return training_step
 
 
-def pinn_pricer_am(option: Option, width=64, depth=4, epochs=10000, learning_rate=1e-3,
+def pinn_pricer_am(option: Option, width=64, depth=4, epochs=1000, learning_rate=1e-3,
                    n_collocation=5000, n_boundary=1000, n_initial=1000,
-                   g_initial=1.0, g_boundary=1.0, Smin=0.05, Smax=None):
+                   g_initial=1.0, g_boundary=1.0, Smin=0.05, Smax=None, resample_rate=50,
+                   verbose=False):
     if Smax is None:
-        Smax = 5 * option.K
+        Smax = 3 * option.K
 
-    col_pts, bc_pts, ic_pts = sample_points_am(option, n_collocation, n_boundary, n_initial, Smin, Smax)
+    S0 = option.S0
+    K = option.K
+    option_type = option.option_type
 
-    model = build_model(width, depth)
-    model.summary()
+    model = build_model(option, width, depth)
+
+    # lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    #     initial_learning_rate=1e-3,
+    #     decay_steps=epochs // 2,
+    #     decay_rate=0.9)
+
     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
     training_step = make_training_step_am(option, model, optimizer, g_initial, g_boundary)
-    train(training_step, col_pts, bc_pts, ic_pts, epochs=epochs)
+    train(training_step, option, n_collocation, n_boundary, n_initial, Smin, Smax,
+          epochs=epochs, resample_rate=resample_rate, verbose=verbose)
 
-    return float(model.predict(tf.constant([[option.S0, 0.0]], dtype=tf.float32))[0, 0])
+    price = float(model(tf.constant([[S0, 0.0]], dtype=tf.float32))[0, 0])
+    intrinsic = float(payoff(S0, K, option_type))
+
+    return max(price, intrinsic)
 
 
 def pinn_pricer(option: Option, **kwargs):
