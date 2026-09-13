@@ -44,10 +44,10 @@ def theta(pricer, option: Option, h=1e-2, **kwargs):
 
 def all_greeks(pricer, option: Option, **kwargs):
     price = pricer(option, **kwargs)
-    delta = delta(pricer, option, **kwargs)
-    gamma = gamma(pricer, option, **kwargs)
-    vega = vega(pricer, option, **kwargs)
-    theta = theta(pricer, option, **kwargs)
-    rho = rho(pricer, option, **kwargs)
+    d = delta(pricer, option, **kwargs)
+    g = gamma(pricer, option, **kwargs)
+    v = vega(pricer, option, **kwargs)
+    th = theta(pricer, option, **kwargs)
+    r = rho(pricer, option, **kwargs)
 
-    return (price, delta, gamma, vega, theta, rho)
+    return (price, d, g, v, th, r)
