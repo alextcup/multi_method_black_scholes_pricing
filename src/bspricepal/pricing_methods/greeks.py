@@ -1,6 +1,6 @@
 from dataclasses import replace
 
-from option import Option
+from ..option import Option
 
 
 def delta(pricer, option: Option, h=1e-2, **kwargs):

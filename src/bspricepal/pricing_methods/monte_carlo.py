@@ -1,6 +1,6 @@
 import numpy as np
 
-from option import Option
+from ..option import Option
 
 def payoff(S, K, option_type):
     if option_type == "call":

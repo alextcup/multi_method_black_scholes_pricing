@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.linalg import solve_banded
 
-from option import Option
+from ..option import Option
 
 
 def payoff(S, K, option_type):

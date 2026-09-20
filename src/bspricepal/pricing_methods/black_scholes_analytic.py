@@ -1,7 +1,7 @@
 from scipy.stats import norm
 import math
 
-from option import Option
+from ..option import Option
 
 def analytic_bs_pricer(option: Option):
     S0 = option.S0

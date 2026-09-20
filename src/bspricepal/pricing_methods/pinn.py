@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from option import Option
+from ..option import Option
 
 
 def payoff(S, K, option_type):

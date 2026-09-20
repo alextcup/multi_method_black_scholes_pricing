@@ -1,6 +1,6 @@
 import numpy as np
 
-from option import Option
+from ..option import Option
 
 
 def binomial_pricer(option: Option, n_steps=10):

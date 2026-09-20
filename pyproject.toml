@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "multi-method-bs-pricing"
+version = "0.1.0"
+description = "Black-Scholes option pricing via analytic, binomial tree, Monte Carlo, finite-difference and PINN methods"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [{ name = "Aleksandar Cupkovic" }]
+keywords = ["options", "black-scholes", "quantitative-finance", "derivatives"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+    "numpy>=1.22",
+    "scipy>=1.8",
+]
+
+[project.optional-dependencies]
+pinn = ["tensorflow>=2.13"]
+
+[project.urls]
+Homepage = "https://github.com/alextcup/multi_method_black_scholes_pricing"
+Issues = "https://github.com/alextcup/multi_method_black_scholes_pricing/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bspricepal"]
