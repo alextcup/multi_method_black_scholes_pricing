@@ -58,11 +58,4 @@ def analytic_bs_greeks(option: Option):
         theta = time_decay - div_yield * S0 * disc_q * norm.cdf(-d_1) + r * K * disc_r * norm.cdf(-d_2)
         rho = -K * T * disc_r * norm.cdf(-d_2)
 
-    return {
-        "price": analytic_bs_pricer(option),
-        "delta": delta,
-        "gamma": gamma,
-        "vega": vega,
-        "theta": theta,
-        "rho": rho,
-    }
+    return (analytic_bs_pricer(option), delta, gamma, vega, theta, rho)

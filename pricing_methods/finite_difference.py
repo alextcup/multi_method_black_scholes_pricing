@@ -13,9 +13,9 @@ def payoff(S, K, option_type):
 
 def crank_nicolson_matrices(dx, dt, n_space):
     l = dt / dx ** 2
-    diag1 = np.array([0.5 * l for i in range(n_space-2)])
-    diag2 = [1 + l for i in range(n_space-1)]
-    diag3 = [1 - l for i in range(n_space-1)]
+    diag1 = np.array([0.5 * l for _ in range(n_space-2)])
+    diag2 = [1 + l for _ in range(n_space-1)]
+    diag3 = [1 - l for _ in range(n_space-1)]
 
     A = np.zeros((3, n_space-1))
     A[0,1:] = -1 * diag1
@@ -80,7 +80,7 @@ def crank_nicolson_transformed_eur(option: Option, n_space, n_steps, xmin=-3, xm
     return np.array(w)
 
 
-def transform_to_original(option: Option, y, n_space, n_steps, xmin=-3, xmax=3):
+def transform_to_original(option: Option, y, n_space, xmin=-3, xmax=3):
     K = option.K
     T = option.T
     r = option.r
@@ -90,9 +90,6 @@ def transform_to_original(option: Option, y, n_space, n_steps, xmin=-3, xmax=3):
     dx = (xmax - xmin) / n_space
 
     tmax = 0.5 * sigma ** 2 * T
-    dt = tmax / n_steps
-
-    l = dt / dx ** 2
 
     q = 2 * (r - div_yield) / sigma ** 2
     p = 2 * r / sigma ** 2
@@ -110,7 +107,7 @@ def transform_to_original(option: Option, y, n_space, n_steps, xmin=-3, xmax=3):
 
 def fd_pricer_eur(option: Option, n_space, n_steps, xmin=-3, xmax=3):
     y = crank_nicolson_transformed_eur(option, n_space, n_steps, xmin, xmax)
-    S, t, v = transform_to_original(option, y[-1], n_space, n_steps, xmin, xmax)
+    S, t, v = transform_to_original(option, y[-1], n_space, xmin, xmax)
 
     return np.interp(option.S0, S, v)
 
@@ -127,8 +124,6 @@ def g(option: Option, x, t):
 
 
 def init_w(option: Option, n_space, v, xmin, dx, dt):
-    l = dt / dx ** 2
-
     w = np.zeros((n_space+1,))
     w[0] = g(option, xmin, v * dt)
     w[n_space] = g(option, xmin + n_space * dx, v * dt)
@@ -168,9 +163,7 @@ def crank_nicolson_transformed_am(option: Option, n_space, n_steps, xmin=-3, xma
     w_vals = [w]
 
     for v in range(n_steps):
-        t = v * dt
         b = discretization(option, w, n_space, v, xmin, dx, dt)
-        g_cur = g(option, xmin + np.array([i for i in range(n_space+1)]) * dx, v * dt)
         g_next = g(option, xmin + np.array([i for i in range(n_space+1)]) * dx, (v + 1) * dt)
 
         cur_vec = np.maximum(w, g_next)
@@ -198,13 +191,13 @@ def crank_nicolson_transformed_am(option: Option, n_space, n_steps, xmin=-3, xma
 
 def fd_pricer_am(option: Option, n_space, n_steps, xmin=-3, xmax=3, eps=1e-10, omega=1.0, max_itr=10000):
     y = crank_nicolson_transformed_am(option, n_space, n_steps, xmin, xmax, eps, omega, max_itr)[-1]
-    S, t, v = transform_to_original(option, y, n_space, n_steps, xmin, xmax)
+    S, t, v = transform_to_original(option, y, n_space, xmin, xmax)
 
     return np.interp(option.S0, S, v)
 
 
 def fd_pricer(option: Option, n_space, n_steps, xmin=-3, xmax=3, **kwargs):
     if option.exercise == "european":
-        return fd_pricer_eur(option, n_space, n_steps, xmin, xmax, **kwargs)
+        return fd_pricer_eur(option, n_space, n_steps, xmin, xmax)
     elif option.exercise == "american":
         return fd_pricer_am(option, n_space, n_steps, xmin, xmax, **kwargs)

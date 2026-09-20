@@ -1,5 +1,4 @@
 import tensorflow as tf
-import numpy as np
 
 from option import Option
 
@@ -246,11 +245,6 @@ def pinn_pricer_am(option: Option, width=64, depth=4, epochs=1000, learning_rate
     option_type = option.option_type
 
     model = build_model(option, width, depth)
-
-    # lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    #     initial_learning_rate=1e-3,
-    #     decay_steps=epochs // 2,
-    #     decay_rate=0.9)
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
